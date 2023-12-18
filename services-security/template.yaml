@@ -1,3 +1,8 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Custom Lambdas for AWS Services Security
+
+Resources:
+
 ################## S3 with Cloudfront Check ####################
 
   S3CloudfrontCheckBucketPolicyRole:
@@ -31,7 +36,7 @@
       Handler: index.lambda_handler
       Role: !GetAtt S3CloudfrontCheckBucketPolicyRole.Arn
       Runtime: python3.8
-      CodeUri: lambdas/S3CloudfrontCheckBucketPolicy/
+      CodeUri: ../lambdas/S3CloudfrontCheckBucketPolicy/
       Timeout: 60
       Environment:
         Variables:
@@ -87,7 +92,7 @@
       Handler: index.lambda_handler
       Role: !GetAtt EC2InstanceTypeCheckLambdaRole.Arn
       Runtime: python3.8
-      CodeUri: lambdas/CheckEC2InstanceTypes/
+      CodeUri: ../lambdas/CheckEC2InstanceTypes/
       Environment:
         Variables:
           SNS_TOPIC_ARN: !Ref GeneralNotificationTopic
@@ -97,7 +102,7 @@
   EveryTwelveHoursEC2InstanceTypeCheckTrigger:
     Type: AWS::Events::Rule
     Properties:
-      ScheduleExpression: 'rate(12 hours)'
+      ScheduleExpression: 'rate(3 hours)'
       Targets:
         - Arn: !GetAtt EC2InstanceTypeCheckLambdaFunction.Arn
           Id: "EveryTwelveHoursEC2InstanceTypeCheck"
@@ -145,7 +150,7 @@
       Handler: index.lambda_handler
       Role: !GetAtt EC2SSHRestrictionLambdaRole.Arn
       Runtime: python3.8
-      CodeUri: lambdas/SSHRestrictionCloudtrail/
+      CodeUri: ../lambdas/SSHRestrictionCloudtrail/
       Environment:
         Variables:
           SNS_TOPIC_ARN: !Ref GeneralNotificationTopic
@@ -155,7 +160,7 @@
   EveryFourHoursEC2SSHRestrictionTrigger:
     Type: AWS::Events::Rule
     Properties:
-      ScheduleExpression: 'rate(4 hours)'
+      ScheduleExpression: 'rate(3 hours)'
       Targets:
         - Arn: !GetAtt EC2SSHRestrictionLambdaFunction.Arn
           Id: "EveryFourHoursEC2SSHRestriction"
@@ -202,7 +207,7 @@
       Handler: index.lambda_handler
       Role: !GetAtt RestrictedCommonPortsLambdaRole.Arn
       Runtime: python3.8
-      CodeUri: lambdas/RestrictOpenPorts/
+      CodeUri: ../lambdas/RestrictOpenPorts/
       Environment:
         Variables:
           SNS_TOPIC_ARN: !Ref GeneralNotificationTopic
@@ -211,7 +216,7 @@
   RestrictedCommonPortsScheduledEventRule:
     Type: AWS::Events::Rule
     Properties:
-      ScheduleExpression: 'rate(6 hours)'
+      ScheduleExpression: 'rate(3 hours)'
       Targets:
         - Arn: !GetAtt RestrictedCommonPortsLambdaFunction.Arn
           Id: "RestrictedCommonPortsLambdaTarget"
@@ -256,7 +261,7 @@
       Handler: index.lambda_handler
       Role: !GetAtt CloudwatchLogGroupRetentionRole.Arn
       Runtime: python3.8
-      CodeUri: lambdas/CloudwatchLogsRetentionCheck/
+      CodeUri: ../lambdas/CloudwatchLogsRetentionCheck/
       Environment:
         Variables:
           SNS_TOPIC_ARN: !Ref GeneralNotificationTopic
@@ -265,7 +270,7 @@
   CloudwatchLogGroupRetentionSchedule:
     Type: AWS::Events::Rule
     Properties:
-      ScheduleExpression: 'rate(6 hours)'
+      ScheduleExpression: 'rate(3 days)'
       Targets:
         - Arn: !GetAtt CloudwatchLogGroupRetentionFunction.Arn
           Id: "CloudwatchLogGroupRetentionTarget"

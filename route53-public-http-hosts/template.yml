@@ -1,0 +1,125 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFormation Template for Route 53 Health Check, CloudWatch Alarm, and SNS Topic
+
+Resources:
+  Route53NotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: Route53NotificationTopic
+
+  LambdaCloudwatchAlarmALBRoute53ExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: LambdaSNSPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sns:Publish
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: '*'
+
+  LambdaCloudwatchAlarmALBRoute53Function:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.lambda_handler
+      Role: !GetAtt LambdaCloudwatchAlarmALBRoute53ExecutionRole.Arn
+      Runtime: python3.8
+      CodeUri: ../lambdas/LambdaCloudwatchAlarmALBRoute53/
+      Environment:
+        Variables:
+          SLACK_WEBHOOK_URL: 'https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX' 
+          DOMAIN_NAMES: >
+            {
+              "SampleHealthCheckAlarm": "sampledomain1.example.com",
+              "AnotherSampleHealthCheckAlarm": "sampledomain2.example.com"
+            } 
+      Timeout: 50
+
+  LambdaCloudwatchAlarmALBRoute53InvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt LambdaCloudwatchAlarmALBRoute53Function.Arn
+      Action: lambda:InvokeFunction
+      Principal: sns.amazonaws.com
+      SourceArn: !Ref Route53NotificationTopic
+
+  LambdaSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref Route53NotificationTopic
+      Protocol: lambda
+      Endpoint: !GetAtt LambdaCloudwatchAlarmALBRoute53Function.Arn
+
+  HealthCheck:
+    Type: AWS::Route53::HealthCheck
+    Properties:
+      HealthCheckConfig:
+        Type: HTTPS
+        FullyQualifiedDomainName: sampledomain1.example.com
+        Port: 443
+        ResourcePath: '/'
+      HealthCheckTags:
+        - Key: "Name"
+          Value: "SampleDomain1"
+
+  HealthCheckAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: SampleHealthCheckAlarm
+      AlarmDescription: Alarm for Sample Domain 1 Health Check
+      Namespace: AWS/Route53
+      MetricName: HealthCheckStatus
+      Dimensions:
+        - Name: HealthCheckId
+          Value: !Ref HealthCheck
+      Statistic: Minimum
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: LessThanThreshold
+      AlarmActions:
+        - !Ref Route53NotificationTopic
+
+  SecondHealthCheck:
+    Type: AWS::Route53::HealthCheck
+    Properties:
+      HealthCheckConfig:
+        Type: HTTPS
+        FullyQualifiedDomainName: sampledomain2.example.com
+        Port: 443
+        ResourcePath: '/'
+        RequestInterval: 10
+        FailureThreshold: 3
+      HealthCheckTags:
+        - Key: "Name"
+          Value: "SampleDomain2"
+
+  SecondHealthCheckAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: AnotherSampleHealthCheckAlarm
+      AlarmDescription: Alarm for Sample Domain 2 Health Check
+      Namespace: AWS/Route53
+      MetricName: HealthCheckStatus
+      Dimensions:
+        - Name: HealthCheckId
+          Value: !Ref SecondHealthCheck
+      Statistic: Minimum
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: LessThanThreshold
+      AlarmActions:
+        - !Ref Route53NotificationTopic
