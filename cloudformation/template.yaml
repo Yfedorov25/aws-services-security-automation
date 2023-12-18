@@ -1,0 +1,282 @@
+################## S3 with Cloudfront Check ####################
+
+  S3CloudfrontCheckBucketPolicyRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: S3CloudfrontCheckBucketPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ec2:DescribeRegions
+                  - s3:GetBucketPolicy
+                  - s3:GetBucketWebsite
+                  - s3:ListAllMyBuckets
+                  - s3:GetBucketPublicAccessBlock
+                  - sns:Publish
+                Resource: '*'
+  
+  S3CloudfrontCheckBucketPolicy:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.lambda_handler
+      Role: !GetAtt S3CloudfrontCheckBucketPolicyRole.Arn
+      Runtime: python3.8
+      CodeUri: lambdas/S3CloudfrontCheckBucketPolicy/
+      Timeout: 60
+      Environment:
+        Variables:
+          SNS_TOPIC_ARN: !Ref GeneralNotificationTopic
+
+  S3CloudfrontCheckBucketPolicySchedule:
+    Type: 'AWS::Events::Rule'
+    Properties:
+      ScheduleExpression: 'rate(3 days)'
+      Targets:
+        - Arn: !GetAtt S3CloudfrontCheckBucketPolicy.Arn
+          Id: 'S3CloudfrontCheckBucketPolicyTarget'
+
+  S3CloudfrontCheckBucketPolicyInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt S3CloudfrontCheckBucketPolicy.Arn
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt S3CloudfrontCheckBucketPolicySchedule.Arn
+
+
+################ Check EC2 Instance Types ################
+
+  EC2InstanceTypeCheckLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: EC2InstanceTypeCheckLambdaPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ec2:DescribeRegions
+                  - ec2:DescribeInstances
+                  - ec2:StopInstances
+                  - sns:Publish
+                  - cloudtrail:LookupEvents
+                Resource: '*'
+
+ 
+  EC2InstanceTypeCheckLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.lambda_handler
+      Role: !GetAtt EC2InstanceTypeCheckLambdaRole.Arn
+      Runtime: python3.8
+      CodeUri: lambdas/CheckEC2InstanceTypes/
+      Environment:
+        Variables:
+          SNS_TOPIC_ARN: !Ref GeneralNotificationTopic
+      Timeout: 120
+
+
+  EveryTwelveHoursEC2InstanceTypeCheckTrigger:
+    Type: AWS::Events::Rule
+    Properties:
+      ScheduleExpression: 'rate(12 hours)'
+      Targets:
+        - Arn: !GetAtt EC2InstanceTypeCheckLambdaFunction.Arn
+          Id: "EveryTwelveHoursEC2InstanceTypeCheck"
+
+  LambdaEC2InstanceTypeCheckInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt EC2InstanceTypeCheckLambdaFunction.Arn
+      Action: 'lambda:InvokeFunction'
+      Principal: 'events.amazonaws.com'
+      SourceArn: !GetAtt EveryTwelveHoursEC2InstanceTypeCheckTrigger.Arn
+
+
+####################### SG SSH Restriction and Cloudtrail Investigation ######################
+
+  EC2SSHRestrictionLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: EC2SSHRestrictionLambdaPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ec2:DescribeRegions
+                  - ec2:DescribeSecurityGroups
+                  - ec2:RevokeSecurityGroupIngress
+                  - sns:Publish
+                  - cloudtrail:LookupEvents
+
+                Resource: '*'
+
+
+  EC2SSHRestrictionLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.lambda_handler
+      Role: !GetAtt EC2SSHRestrictionLambdaRole.Arn
+      Runtime: python3.8
+      CodeUri: lambdas/SSHRestrictionCloudtrail/
+      Environment:
+        Variables:
+          SNS_TOPIC_ARN: !Ref GeneralNotificationTopic
+      Timeout: 60
+
+
+  EveryFourHoursEC2SSHRestrictionTrigger:
+    Type: AWS::Events::Rule
+    Properties:
+      ScheduleExpression: 'rate(4 hours)'
+      Targets:
+        - Arn: !GetAtt EC2SSHRestrictionLambdaFunction.Arn
+          Id: "EveryFourHoursEC2SSHRestriction"
+
+  LambdaEC2SSHRestrictionInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt EC2SSHRestrictionLambdaFunction.Arn
+      Action: 'lambda:InvokeFunction'
+      Principal: 'events.amazonaws.com'
+      SourceArn: !GetAtt EveryFourHoursEC2SSHRestrictionTrigger.Arn
+
+
+
+################### Restrict open ports other that HTTP HTTPS ######################
+
+  RestrictedCommonPortsLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: RestrictedCommonPortsLambdaPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ec2:DescribeRegions
+                  - ec2:DescribeSecurityGroups
+                  - ec2:RevokeSecurityGroupIngress
+                  - cloudtrail:LookupEvents
+                  - sns:Publish
+                Resource: '*'
+
+  RestrictedCommonPortsLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.lambda_handler
+      Role: !GetAtt RestrictedCommonPortsLambdaRole.Arn
+      Runtime: python3.8
+      CodeUri: lambdas/RestrictOpenPorts/
+      Environment:
+        Variables:
+          SNS_TOPIC_ARN: !Ref GeneralNotificationTopic
+      Timeout: 300
+
+  RestrictedCommonPortsScheduledEventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      ScheduleExpression: 'rate(6 hours)'
+      Targets:
+        - Arn: !GetAtt RestrictedCommonPortsLambdaFunction.Arn
+          Id: "RestrictedCommonPortsLambdaTarget"
+
+  RestrictedCommonPortsLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt RestrictedCommonPortsLambdaFunction.Arn
+      Action: 'lambda:InvokeFunction'
+      Principal: 'events.amazonaws.com'
+      SourceArn: !GetAtt RestrictedCommonPortsScheduledEventRule.Arn
+
+
+###################### Cloudwatch Logs Retention Check #######################
+
+  CloudwatchLogGroupRetentionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: CloudwatchLogGroupRetentionPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ec2:DescribeRegions
+                  - logs:DescribeLogGroups
+                  - logs:PutRetentionPolicy
+                  - sns:Publish
+                Resource: '*'
+
+  CloudwatchLogGroupRetentionFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.lambda_handler
+      Role: !GetAtt CloudwatchLogGroupRetentionRole.Arn
+      Runtime: python3.8
+      CodeUri: lambdas/CloudwatchLogsRetentionCheck/
+      Environment:
+        Variables:
+          SNS_TOPIC_ARN: !Ref GeneralNotificationTopic
+      Timeout: 300
+
+  CloudwatchLogGroupRetentionSchedule:
+    Type: AWS::Events::Rule
+    Properties:
+      ScheduleExpression: 'rate(6 hours)'
+      Targets:
+        - Arn: !GetAtt CloudwatchLogGroupRetentionFunction.Arn
+          Id: "CloudwatchLogGroupRetentionTarget"
+
+  CloudwatchLogGroupRetentionPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt CloudwatchLogGroupRetentionFunction.Arn
+      Action: 'lambda:InvokeFunction'
+      Principal: 'events.amazonaws.com'
+      SourceArn: !GetAtt CloudwatchLogGroupRetentionSchedule.Arn
+
+
+
