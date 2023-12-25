@@ -1,66 +1,3 @@
-# name: Deploy Cloudformation Templates
-
-# on:
-#   push:
-#     branches:
-#       - main
-
-# env:
-#   AWS_DEFAULT_REGION: eu-central-1
-
-# jobs:
-#   deploy_templates:
-#     runs-on: ubuntu-latest
-#     environment: develop
-#     steps:
-#     - name: Checkout code
-#       uses: actions/checkout@v2
-
-#     - name: Set up Python 3.8
-#       uses: actions/setup-python@v2
-#       with:
-#         python-version: 3.8
-
-#     - name: Install SAM CLI
-#       run: pip install aws-sam-cli
-
-#     - name: Configure AWS Credentials
-#       uses: aws-actions/configure-aws-credentials@v1
-#       with:
-#         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-#         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-#         aws-region: ${{ env.AWS_DEFAULT_REGION }}
-
-#     # First Template
-#     - name: SAM Build for Route53
-#       run: sam build --debug --template ./route53-public-http-hosts/.aws-sam/build/template.yaml
-#       working-directory: ./route53-public-http-hosts
-
-#     - name: Change Directory for Route53
-#       run: cd .aws-sam/build
-#       working-directory: ./route53-public-http-hosts
-
-#     - name: SAM Deploy for Route53
-#       run: |
-#         sam deploy --stack-name aws-route53-stack --capabilities CAPABILITY_IAM --no-confirm-changeset --resolve-s3 --region ${{ env.AWS_DEFAULT_REGION }} --template-file ./route53-public-http-hosts/.aws-sam/build/template.yaml
-#       working-directory: ./route53-public-http-hosts
-
-#     # Second Template
-#     - name: SAM Build for Services Security
-#       run: sam build --debug --template ./services-security/.aws-sam/build/template.yaml
-#       working-directory: ./services-security
-
-#     - name: Change Directory for Services Security
-#       run: cd .aws-sam/build
-#       working-directory: ./services-security
-
-#     - name: SAM Deploy for Services Security
-#       run: |
-#         sam deploy --stack-name aws-services-security-stack --capabilities CAPABILITY_IAM --no-confirm-changeset --resolve-s3 --region ${{ env.AWS_DEFAULT_REGION }} --template-file ./services-security/.aws-sam/build/template.yaml
-#       working-directory: ./services-security
-
-
-
 name: Deploy Cloudformation Templates
 
 on:
@@ -94,35 +31,31 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: ${{ env.AWS_DEFAULT_REGION }}
 
-    # Define common steps as an anchor
-    - &common_steps
-      name: SAM Build
-      run: sam build --debug --template ./template_path/.aws-sam/build/template.yaml
-      working-directory: ./template_path
+    # First Template
+    - name: SAM Build for Route53
+      run: sam build --debug --template ./route53-public-http-hosts/.aws-sam/build/template.yaml
+      working-directory: ./route53-public-http-hosts
 
-    - name: Change Directory
+    - name: Change Directory for Route53
       run: cd .aws-sam/build
-      working-directory: ./template_path
+      working-directory: ./route53-public-http-hosts
 
-    # First Template (Route53)
     - name: SAM Deploy for Route53
       run: |
-        sam deploy --stack-name aws-route53-stack --capabilities CAPABILITY_IAM --no-confirm-changeset --resolve-s3 --region ${{ env.AWS_DEFAULT_REGION }} --template-file ./template_path/.aws-sam/build/template.yaml
-      working-directory: ./template_path
+        sam deploy --stack-name aws-route53-stack --capabilities CAPABILITY_IAM --no-confirm-changeset --resolve-s3 --region ${{ env.AWS_DEFAULT_REGION }} --template-file ./route53-public-http-hosts/.aws-sam/build/template.yaml
+      working-directory: ./route53-public-http-hosts
 
-    # Second Template (Services Security)
+    # Second Template
+    - name: SAM Build for Services Security
+      run: sam build --debug --template ./services-security/.aws-sam/build/template.yaml
+      working-directory: ./services-security
+
+    - name: Change Directory for Services Security
+      run: cd .aws-sam/build
+      working-directory: ./services-security
+
     - name: SAM Deploy for Services Security
       run: |
-        sam deploy --stack-name aws-services-security-stack --capabilities CAPABILITY_IAM --no-confirm-changeset --resolve-s3 --region ${{ env.AWS_DEFAULT_REGION }} --template-file ./template_path/.aws-sam/build/template.yaml
-      working-directory: ./template_path
+        sam deploy --stack-name aws-services-security-stack --capabilities CAPABILITY_IAM --no-confirm-changeset --resolve-s3 --region ${{ env.AWS_DEFAULT_REGION }} --template-file ./services-security/.aws-sam/build/template.yaml
+      working-directory: ./services-security
 
-    # Reuse the common steps for each template
-    - <<: *common_steps
-      name: SAM Build for Route53
-      env:
-        template_path: ./route53-public-http-hosts
-
-    - <<: *common_steps
-      name: SAM Build for Services Security
-      env:
-        template_path: ./services-security
