@@ -11,6 +11,7 @@ env:
 jobs:
   setup_and_deploy:
     runs-on: ubuntu-latest
+    environment: develop
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
