@@ -9,9 +9,8 @@ env:
   AWS_DEFAULT_REGION: eu-central-1
 
 jobs:
-  setup_and_deploy:
+  deploy_route53:
     runs-on: ubuntu-latest
-    environment: develop
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
@@ -31,12 +30,41 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: ${{ env.AWS_DEFAULT_REGION }}
 
-    - name: SAM Build and Deploy for Route53
-      run: |
-        sam build --debug --template ./route53-public-http-hosts/.aws-sam/build/template.yaml
-        sam deploy --stack-name aws-route53-stack --capabilities CAPABILITY_IAM --no-confirm-changeset --resolve-s3 --region ${{ env.AWS_DEFAULT_REGION }} --template-file ./route53-public-http-hosts/.aws-sam/build/template.yaml
+    - name: SAM Build for Route53
+      run: sam build --debug --template ./route53-public-http-hosts/.aws-sam/build/template.yaml
+      working-directory: ./route53-public-http-hosts
 
-    - name: SAM Build and Deploy for Services Security
+    - name: SAM Deploy for Route53
       run: |
-        sam build --debug --template ./services-security/.aws-sam/build/template.yaml
+        sam deploy --stack-name aws-route53-stack --capabilities CAPABILITY_IAM --no-confirm-changeset --resolve-s3 --region ${{ env.AWS_DEFAULT_REGION }} --template-file ./route53-public-http-hosts/.aws-sam/build/template.yaml
+      working-directory: ./route53-public-http-hosts
+
+  deploy_services:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up Python 3.8
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.8
+
+    - name: Install SAM CLI
+      run: pip install aws-sam-cli
+
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_DEFAULT_REGION }}
+
+    - name: SAM Build for Services Security
+      run: sam build --debug --template ./services-security/.aws-sam/build/template.yaml
+      working-directory: ./services-security
+
+    - name: SAM Deploy for Services Security
+      run: |
         sam deploy --stack-name aws-services-security-stack --capabilities CAPABILITY_IAM --no-confirm-changeset --resolve-s3 --region ${{ env.AWS_DEFAULT_REGION }} --template-file ./services-security/.aws-sam/build/template.yaml
+      working-directory: ./services-security
