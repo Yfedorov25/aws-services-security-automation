@@ -33,7 +33,7 @@ jobs:
 
     # First Template
     - name: SAM Build for Route53
-      run: sam build --debug --template ./route53-public-http-hosts/.aws-sam/build/template.yaml
+      run: sam build --debug
       working-directory: ./route53-public-http-hosts
 
     - name: Change Directory for Route53
@@ -47,7 +47,7 @@ jobs:
 
     # Second Template
     - name: SAM Build for Services Security
-      run: sam build --debug --template ./services-security/.aws-sam/build/template.yaml
+      run: sam build --debug
       working-directory: ./services-security
 
     - name: Change Directory for Services Security
