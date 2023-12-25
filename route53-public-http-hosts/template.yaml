@@ -7,6 +7,8 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       TopicName: Route53NotificationTopic
+      DisplayName: "Route53 Notification Topic"
+
 
   LambdaCloudwatchAlarmALBRoute53ExecutionRole:
     Type: AWS::IAM::Role
