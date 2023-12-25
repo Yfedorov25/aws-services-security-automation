@@ -53,7 +53,10 @@ Resources:
         MySNSTopic:
           Type: SNS
           Properties:
-            TopicName: !Ref Route53NotificationTopic
+            TopicName:
+              Fn::GetAtt:
+                - Route53NotificationTopic
+                - TopicName
 
   HealthCheck:
     Type: AWS::Route53::HealthCheck
