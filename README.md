@@ -103,8 +103,4 @@ To deploy these solutions:
 
 ## Contributing
 
-If you would like to contribute to this project, please fork the repository and submit a pull request.
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
+I welcome contributions to this repository. If you have suggestions or improvements, please submit a pull request or open an issue.

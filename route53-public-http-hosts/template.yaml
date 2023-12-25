@@ -1,4 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
 Description: CloudFormation Template for Route 53 Health Check, CloudWatch Alarm, and SNS Topic
 
 Resources:
@@ -31,7 +32,7 @@ Resources:
                 Resource: '*'
 
   LambdaCloudwatchAlarmALBRoute53Function:
-    Type: AWS::Lambda::Function
+    Type: AWS::Serverless::Function
     Properties:
       Handler: index.lambda_handler
       Role: !GetAtt LambdaCloudwatchAlarmALBRoute53ExecutionRole.Arn
@@ -46,21 +47,11 @@ Resources:
               "AnotherSampleHealthCheckAlarm": "sampledomain2.example.com"
             } 
       Timeout: 50
-
-  LambdaCloudwatchAlarmALBRoute53InvokePermission:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !GetAtt LambdaCloudwatchAlarmALBRoute53Function.Arn
-      Action: lambda:InvokeFunction
-      Principal: sns.amazonaws.com
-      SourceArn: !Ref Route53NotificationTopic
-
-  LambdaSubscription:
-    Type: AWS::SNS::Subscription
-    Properties:
-      TopicArn: !Ref Route53NotificationTopic
-      Protocol: lambda
-      Endpoint: !GetAtt LambdaCloudwatchAlarmALBRoute53Function.Arn
+      Events:
+        MySNSTopic:
+          Type: SNS
+          Properties:
+            TopicName: !Ref Route53NotificationTopic
 
   HealthCheck:
     Type: AWS::Route53::HealthCheck
