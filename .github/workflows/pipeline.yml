@@ -8,7 +8,8 @@ on:
 env:
   STACK_NAME: aws-services-security-automation
   STACK_NAME_ROUTE53: aws-services-security-automation-route-53
-  S3_BUCKET_NAME: aws-services-cost-optimization-bucket
+  S3_BUCKET_NAME: aws-services-security-automation
+  S3_BUCKET_NAME_ROUTE_53: aws-services-security-automation-route-53
   AWS_DEFAULT_REGION: eu-central-1 
 
 jobs:
