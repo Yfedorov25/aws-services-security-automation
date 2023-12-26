@@ -8,6 +8,7 @@ This repository contains a collection of AWS CloudFormation templates and Lambda
 
 - [Solutions Overview](#solutions-overview)
 - [Usage Instructions](#usage-instructions)
+- [Deployment Instructions](#deployment-instructions)
 - [Solutions Description](#solutions-description)
 - [Contributing](#contributing)
 - [License](#license)
@@ -32,6 +33,34 @@ To deploy these solutions:
 1. Navigate to the desired solution's folder.
 2. Review and update the CloudFormation template and Lambda function as needed.
 3. Deploy the template using the AWS Management Console, AWS CLI, or your preferred deployment tool.
+
+## Deployment Instructions
+
+This repository uses a GitHub Actions workflow for automated deployment of CloudFormation templates. To set up and use this workflow:
+
+1. **Configure GitHub Secrets**:
+    - Navigate to your GitHub repository's settings.
+    - Go to the "Secrets" section.
+    - Add the following secrets:
+        - `AWS_ACCESS_KEY_ID`: Your AWS access key ID.
+        - `AWS_SECRET_ACCESS_KEY`: Your AWS secret access key.
+    These credentials should be for an IAM user with permissions necessary to deploy the CloudFormation templates.
+
+2. **Set Environment Variables**:
+    - In the GitHub Actions workflow file, ensure the environment variables `STACK_NAME`, `STACK_NAME_ROUTE53`, `S3_BUCKET_NAME`, `S3_BUCKET_NAME_ROUTE_53`, and `AWS_DEFAULT_REGION` are correctly set.
+
+3. **Deployment Process**:
+    - The workflow is triggered on a push to the `main` branch.
+    - It performs the following steps for each template:
+        - Checks out the code.
+        - Sets up Python 3.8.
+        - Installs the AWS SAM CLI.
+        - Configures AWS credentials using the provided secrets.
+        - Builds the SAM application for each CloudFormation template in the respective directories.
+        - Deploys each built template using AWS SAM, creating or updating the specified CloudFormation stacks.
+
+4. **Monitor Deployment**:
+    - Check the Actions tab in your GitHub repository to monitor the deployment process.
 
 ## Solutions Description
 
